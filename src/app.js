@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { getDatabase } from "./config/db.js";
+import booksRouter from "./routes/books.routes.js";
 
 const app = express();
 
@@ -35,6 +36,8 @@ app.get("/health", async (request, response) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+app.use("/books", booksRouter);
 
 app.use((request, response) => {
   response.status(404).json({
