@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { getBooksCollection } from "../config/collections.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 import { parseBookPayload } from "../utils/bookPayload.js";
+import { isBookOwner } from "../utils/ownership.js";
 
 const router = Router();
 
@@ -29,12 +30,16 @@ function parseLimit(value) {
 // GET /books - public
 // Supports optional search, category, sort and limit query parameters.
 router.get("/", async (request, response) => {
-  const { search, category, sort, limit } = request.query;
+  const { search, category, sort, limit, ownerEmail } = request.query;
   const query = {};
 
   if (typeof search === "string" && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), "i");
     query.$or = [{ title: pattern }, { author: pattern }];
+  }
+
+  if (typeof ownerEmail === "string" && ownerEmail.trim()) {
+    query.ownerEmail = new RegExp(`^${escapeRegex(ownerEmail.trim())}$`, "i");
   }
 
   if (
@@ -112,6 +117,91 @@ router.get("/:id", async (request, response) => {
   }
 
   response.json(book);
+});
+
+// PATCH /books/:id - private (owner only)
+router.patch("/:id", verifyToken, async (request, response) => {
+  const { id } = request.params;
+
+  if (!ObjectId.isValid(id)) {
+    return response.status(400).json({ message: "Invalid book id." });
+  }
+
+  const books = getBooksCollection();
+  const book = await books.findOne({ _id: new ObjectId(id) });
+
+  if (!book) {
+    return response.status(404).json({ message: "Book not found." });
+  }
+
+  if (!isBookOwner(book, request.user)) {
+    return response
+      .status(403)
+      .json({ message: "You can only edit books you added." });
+  }
+
+  const { errors, data } = parseBookPayload(request.body, { partial: true });
+
+  if (errors.length > 0) {
+    return response.status(400).json({ message: errors[0], errors });
+  }
+
+  if (Object.keys(data).length === 0) {
+    return response
+      .status(400)
+      .json({ message: "No valid fields were provided to update." });
+  }
+
+  if (data.totalCopies !== undefined) {
+    const borrowedCopies = Math.max(
+      0,
+      book.totalCopies - book.availableCopies,
+    );
+
+    if (data.totalCopies < borrowedCopies) {
+      return response.status(400).json({
+        message: `Total copies cannot be less than the ${borrowedCopies} copies currently borrowed.`,
+      });
+    }
+
+    data.availableCopies = data.totalCopies - borrowedCopies;
+  }
+
+  data.updatedAt = new Date();
+
+  const updatedBook = await books.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: data },
+    { returnDocument: "after" },
+  );
+
+  response.json(updatedBook);
+});
+
+// DELETE /books/:id - private (owner only)
+router.delete("/:id", verifyToken, async (request, response) => {
+  const { id } = request.params;
+
+  if (!ObjectId.isValid(id)) {
+    return response.status(400).json({ message: "Invalid book id." });
+  }
+
+  const books = getBooksCollection();
+  const book = await books.findOne({ _id: new ObjectId(id) });
+
+  if (!book) {
+    return response.status(404).json({ message: "Book not found." });
+  }
+
+  if (!isBookOwner(book, request.user)) {
+    return response
+      .status(403)
+      .json({ message: "You can only delete books you added." });
+  }
+
+  await books.deleteOne({ _id: new ObjectId(id) });
+
+  response.json({ message: "Book deleted successfully.", deletedId: id });
 });
 
 export default router;
