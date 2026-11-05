@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { getBooksCollection } from "../config/collections.js";
+import { verifyToken } from "../middleware/verifyToken.js";
+import { parseBookPayload } from "../utils/bookPayload.js";
 
 const router = Router();
 
@@ -56,6 +58,43 @@ router.get("/", async (request, response) => {
   const books = await cursor.toArray();
 
   response.json(books);
+});
+
+// POST /books - private
+router.post("/", verifyToken, async (request, response) => {
+  if (!request.user?.email) {
+    return response.status(401).json({ message: "Authentication required." });
+  }
+
+  const { errors, data } = parseBookPayload(request.body);
+
+  if (errors.length > 0) {
+    return response.status(400).json({
+      message: errors[0],
+      errors,
+    });
+  }
+
+  const now = new Date();
+
+  const book = {
+    title: data.title,
+    author: data.author,
+    category: data.category,
+    imageUrl: data.imageUrl,
+    description: data.description,
+    totalCopies: data.totalCopies,
+    availableCopies: data.totalCopies,
+    ownerId: request.user.id,
+    ownerName: request.user.name || "",
+    ownerEmail: request.user.email,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const result = await getBooksCollection().insertOne(book);
+
+  response.status(201).json({ _id: result.insertedId, ...book });
 });
 
 // GET /books/:id - public
