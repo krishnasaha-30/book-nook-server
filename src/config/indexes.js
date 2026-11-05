@@ -10,7 +10,12 @@ export async function ensureIndexes() {
 
   await getBorrowsCollection().createIndexes([
     { key: { userEmail: 1, createdAt: -1 }, name: "borrows_userEmail_createdAt" },
-    { key: { bookId: 1, userEmail: 1 }, name: "borrows_bookId_userEmail" },
+    {
+      key: { bookId: 1, userEmail: 1 },
+      name: "borrows_active_unique",
+      unique: true,
+      partialFilterExpression: { status: "active" },
+    },
   ]);
 
   console.log("MongoDB indexes are ready");

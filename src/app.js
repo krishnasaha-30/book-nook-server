@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { getDatabase } from "./config/db.js";
 import booksRouter from "./routes/books.routes.js";
+import borrowsRouter from "./routes/borrows.routes.js";
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.get("/health", async (request, response) => {
 });
 
 app.use("/books", booksRouter);
+app.use("/borrows", borrowsRouter);
 
 app.use((request, response) => {
   response.status(404).json({
