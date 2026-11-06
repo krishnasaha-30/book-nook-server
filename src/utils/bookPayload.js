@@ -27,6 +27,14 @@ function isHttpUrl(value) {
 export function parseBookPayload(body = {}, { partial = false } = {}) {
   const errors = [];
   const data = {};
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return {
+      errors: ["Book details must be sent as a JSON object."],
+      data,
+    };
+  }
+
   const has = (key) => Object.prototype.hasOwnProperty.call(body, key);
 
   // Title
