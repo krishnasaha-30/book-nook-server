@@ -19,8 +19,18 @@ Express + MongoDB REST API for **BookNook**, a small online library where users 
 
 ```bash
 npm install
-cp .env.example .env
+copy .env.example .env
 npm run dev
 ```
 
 The API runs at `http://localhost:8000` by default.
+
+Set `CLIENT_URL` to the client origin and `BETTER_AUTH_URL` to the origin
+serving the Better Auth JWKS endpoint. For production, set both to their
+deployed URLs in the hosting provider's environment variables.
+
+Run the API's validation tests with:
+
+```bash
+npm test
+```
