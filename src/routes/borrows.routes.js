@@ -149,7 +149,13 @@ router.delete("/:id", verifyToken, async (request, response) => {
       .json({ message: "You can only return books you borrowed." });
   }
 
-  await borrows.deleteOne({ _id: borrow._id });
+  const deletion = await borrows.deleteOne({ _id: borrow._id });
+
+  if (deletion.deletedCount !== 1) {
+    return response
+      .status(409)
+      .json({ message: "This borrow has already been returned." });
+  }
 
   // Increase the available copies back, but never above the total.
   await getBooksCollection().updateOne(
