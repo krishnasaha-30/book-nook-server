@@ -8,6 +8,7 @@ export const BOOK_CATEGORIES = [
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_AUTHOR_LENGTH = 120;
+const MAX_CATEGORY_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_COPIES = 999;
 
@@ -70,10 +71,14 @@ export function parseBookPayload(body = {}, { partial = false } = {}) {
       (item) => item.toLowerCase() === category.toLowerCase(),
     );
 
-    if (!matchedCategory) {
-      errors.push(`Category must be one of: ${BOOK_CATEGORIES.join(", ")}.`);
+    if (!category) {
+      errors.push("Book category is required.");
+    } else if (category.length > MAX_CATEGORY_LENGTH) {
+      errors.push(
+        `Book category cannot be longer than ${MAX_CATEGORY_LENGTH} characters.`,
+      );
     } else {
-      data.category = matchedCategory;
+      data.category = matchedCategory ?? category;
     }
   }
 

@@ -29,6 +29,22 @@ function parseLimit(value) {
 
 // GET /books - public
 // Supports optional search, category, sort and limit query parameters.
+router.get("/categories", async (request, response) => {
+  const categories = await getBooksCollection().distinct("category");
+
+  response.json(
+    categories
+      .filter(
+        (category) =>
+          typeof category === "string" && category.trim().length > 0,
+      )
+      .map((category) => category.trim())
+      .sort((left, right) =>
+        left.localeCompare(right, undefined, { sensitivity: "base" }),
+      ),
+  );
+});
+
 router.get("/", async (request, response) => {
   const { search, category, sort, limit, ownerEmail } = request.query;
   const query = {};
